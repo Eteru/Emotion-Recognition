@@ -1,0 +1,15 @@
+# This config file is not actually used. TODO move config from the script itself
+# to this file
+
+# Available input modes: folder, webcam
+
+input_mode=folder
+
+# Available output modes: folder, som
+
+output_mode=folder
+
+
+# These are ignored if their respective modes are disabled
+input_folder=input
+output_folder=output
