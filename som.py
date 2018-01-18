@@ -3,7 +3,9 @@ import sys
 import time
 import cv2
 import json
+import datetime
 import numpy as np
+
 from watchdog.observers import Observer
 from watchdog.events import FileSystemEventHandler
 
@@ -14,10 +16,14 @@ import read_and_test_model as read_model
 model = read_model.initialize_network()
 model = read_model.load_model(model)
 
+print("Ready.")
+
 class MyHandler(FileSystemEventHandler):
+    """ No need for on modified for ths functionality
     def on_modified(self, event):
         print("on_modified: " + event.src_path)
         self.common_parse(event)
+    """
     
     def on_created(self, event):
         print("on_created: " + event.src_path)
@@ -44,15 +50,21 @@ class MyHandler(FileSystemEventHandler):
             
             print(event.src_path)
             res = self.compute(event.src_path)
-            self.write_result(res, fname.split(".")[0] + ".json")
+            if res is None:
+                return
+
+            self.write_result(res, fname.split(".")[0])
     
 
     def compute(self, path):
         img = cv2.imread(path, cv2.IMREAD_COLOR)
+        if img is None:
+            return None
+
         img = self.preprocess(img)
 
         if img is None:
-            return
+            return None
 
         res = read_model.predict([img], model)
 
@@ -60,10 +72,24 @@ class MyHandler(FileSystemEventHandler):
 
     def write_result(self, res, id):
         #create json dict and write it
-        print(path, res)
+        ts = time.time()
+        st = datetime.datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S')
+        D = {
+            "id" : id,
+            "timestamp" : st,
+            "emotions" : {
+                "anger" : res[0][0],
+                "disgust" : res[0][1],
+                "happiness" : res[0][3],
+                "sadness": res[0][5],
+                "surprise" : res[0][6]
+            }
+        }
+
+        with open(id + ".json", "w") as outfile:
+            json.dump(D, outfile)
     
     def preprocess(self, img):
-        print("aici")
         faces = GetFaces(img, (128, 128), True)
         if len(faces) < 1:
             print("Could not find a face.`")
@@ -76,7 +102,7 @@ class MyHandler(FileSystemEventHandler):
 
 event_handler = MyHandler()
 observer = Observer()
-observer.schedule(event_handler, "/home/ciprian/test", recursive=True)
+observer.schedule(event_handler, "/home/ciprian/test", recursive=False)
 observer.start()
 
 try:
